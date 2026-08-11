@@ -192,6 +192,10 @@ const els = {
   reviewGood: document.querySelector("#reviewGood"),
   reviewProblem: document.querySelector("#reviewProblem"),
   reviewNext: document.querySelector("#reviewNext"),
+  reviewDailySummary: document.querySelector("#reviewDailySummary"),
+  reviewAccuracyTrend: document.querySelector("#reviewAccuracyTrend"),
+  reviewWeaknessAlerts: document.querySelector("#reviewWeaknessAlerts"),
+  reviewWeaknessCount: document.querySelector("#reviewWeaknessCount"),
   saveReview: document.querySelector("#saveReview"),
   cloudConfigForm: document.querySelector("#cloudConfigForm"),
   cloudUrl: document.querySelector("#cloudUrl"),
@@ -443,6 +447,7 @@ function render() {
   renderWeaknessRanking();
   renderExamRecords();
   renderReviewStats();
+  renderReviewAnalysis();
 }
 
 function renderCountdown() {
@@ -955,6 +960,82 @@ function renderReviewStats() {
     <div class="stat-row"><span>平均科目进度</span><strong>${Math.round(average(state.subjects.map(getSubjectProgress)))}%</strong></div>
     <div class="stat-row"><span>本周主力</span><strong>${topSubject(logSubjectCounts.length ? logSubjectCounts : subjectCounts)}</strong></div>
   `;
+}
+
+function renderReviewAnalysis() {
+  const days = getCurrentWeekDays();
+  const daily = days.map((date) => {
+    const tasks = tasksForDate(date);
+    return {
+      date,
+      minutes: logMinutesForDate(date),
+      done: tasks.filter((task) => task.done).length,
+      total: tasks.length
+    };
+  });
+  const maxMinutes = Math.max(60, ...daily.map((item) => item.minutes));
+  els.reviewDailySummary.innerHTML = daily
+    .map(
+      (item) => `
+        <div class="review-day-row">
+          <span>${weekdayLabel(item.date)}<small>${formatDate(item.date)}</small></span>
+          <div class="review-day-bar"><div style="width: ${(item.minutes / maxMinutes) * 100}%;"></div></div>
+          <strong>${(item.minutes / 60).toFixed(1)}h</strong>
+          <em>${item.done}/${item.total} 任务</em>
+        </div>
+      `
+    )
+    .join("");
+
+  const accuracyRecords = [...state.exams]
+    .filter((item) => getCorrectRate(item) !== null)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-7);
+  if (!accuracyRecords.length) {
+    els.reviewAccuracyTrend.innerHTML = `<div class="empty-state">在套卷记录中填写总题数和错题数后，这里会显示正确率变化。</div>`;
+  } else {
+    els.reviewAccuracyTrend.innerHTML = accuracyRecords
+      .map((item) => {
+        const rate = getCorrectRate(item);
+        return `
+          <div class="accuracy-column" title="${escapeHtml(item.title)}：正确率 ${rate}%">
+            <div class="accuracy-bar" style="height: ${Math.max(10, rate)}%;"></div>
+            <strong>${rate}%</strong>
+            <span>${formatDate(item.date)}</span>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  const unresolved = state.mistakes.filter((item) => !item.resolved);
+  const grouped = Object.values(
+    unresolved.reduce((groups, item) => {
+      const key = `${item.subject}::${item.topic}`;
+      if (!groups[key]) groups[key] = { subject: item.subject, topic: item.topic, count: 0, priority: item.priority, reviewCount: 0 };
+      groups[key].count += 1;
+      groups[key].reviewCount += Number(item.reviewCount || 0);
+      if (priorityWeight(item.priority) > priorityWeight(groups[key].priority)) groups[key].priority = item.priority;
+      return groups;
+    }, {})
+  )
+    .sort((a, b) => priorityWeight(b.priority) - priorityWeight(a.priority) || b.count - a.count)
+    .slice(0, 4);
+
+  els.reviewWeaknessCount.textContent = `${grouped.length} 项`;
+  els.reviewWeaknessAlerts.innerHTML = grouped.length
+    ? grouped
+        .map(
+          (item) => `
+            <div class="review-weakness-row">
+              <span class="priority ${item.priority}">${priorityLabel(item.priority)}优先级</span>
+              <strong>${escapeHtml(item.subject)} · ${escapeHtml(item.topic)}</strong>
+              <span>${item.count} 道未解决 · 已复习 ${item.reviewCount} 次</span>
+            </div>
+          `
+        )
+        .join("")
+    : `<div class="empty-state">当前没有未解决错题，保持每周复盘节奏。</div>`;
 }
 
 function filterTasks(filter) {
