@@ -24,6 +24,18 @@
 
 数据保存在当前浏览器的 `localStorage` 中，不需要账号和后端。换浏览器或清除浏览器数据后，本地记录会丢失，因此建议定期使用侧栏的“导出数据”备份。
 
+## 云端同步
+
+网站已内置 Supabase 云端同步。要让手机与电脑共用数据：
+
+1. 在 Supabase 创建一个免费项目。
+2. 在项目的 SQL Editor 执行 [`supabase-schema.sql`](supabase-schema.sql) 中的脚本。
+3. 在 Project Settings 的 API 页面复制 Project URL 和匿名密钥（anon key 或 publishable key）。
+4. 打开网站的“云端同步”页面，保存 URL 与密钥，注册并登录同一个邮箱账号。
+5. 在已有数据的设备点击“同步到云端”；新设备登录后点击“从云端恢复”。
+
+Supabase 的匿名密钥可安全用于浏览器端，数据访问由登录令牌和数据库行级权限控制。不要使用 `service_role` 密钥。
+
 ## 默认设置
 
 考试日期暂定为 `2027-12-25`，可以在左侧栏自行修改。
