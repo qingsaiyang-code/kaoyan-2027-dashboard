@@ -1194,7 +1194,11 @@ async function signUpCloud() {
   try {
     const result = await cloudRequest("/auth/v1/signup", {
       method: "POST",
-      body: { email, password }
+      body: {
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
+      }
     });
     if (result.session) {
       setCloudSession(result.session, result.user);
