@@ -1,4 +1,5 @@
 const STORAGE_KEY = "kaoyan-2027-dashboard-v1";
+const CLOUD_CONFIG_KEY = "kaoyan-2027-cloud-config-v1";
 
 const defaultData = {
   examDate: "2027-12-25",
@@ -102,6 +103,8 @@ const defaultData = {
 };
 
 let state = loadState();
+let cloud = loadCloudConfig();
+let cloudSyncTimer;
 
 const els = {
   examDate: document.querySelector("#examDate"),
@@ -190,6 +193,19 @@ const els = {
   reviewProblem: document.querySelector("#reviewProblem"),
   reviewNext: document.querySelector("#reviewNext"),
   saveReview: document.querySelector("#saveReview"),
+  cloudConfigForm: document.querySelector("#cloudConfigForm"),
+  cloudUrl: document.querySelector("#cloudUrl"),
+  cloudAnonKey: document.querySelector("#cloudAnonKey"),
+  saveCloudConfig: document.querySelector("#saveCloudConfig"),
+  cloudAuthForm: document.querySelector("#cloudAuthForm"),
+  cloudEmail: document.querySelector("#cloudEmail"),
+  cloudPassword: document.querySelector("#cloudPassword"),
+  cloudSignUp: document.querySelector("#cloudSignUp"),
+  cloudSignIn: document.querySelector("#cloudSignIn"),
+  cloudUpload: document.querySelector("#cloudUpload"),
+  cloudDownload: document.querySelector("#cloudDownload"),
+  cloudSignOut: document.querySelector("#cloudSignOut"),
+  cloudStatus: document.querySelector("#cloudStatus"),
   quickAddDashboard: document.querySelector("#quickAddDashboard"),
   exportData: document.querySelector("#exportData"),
   importData: document.querySelector("#importData"),
@@ -206,6 +222,7 @@ function init() {
   els.examDateRecord.value = todayKey();
   els.logDate.value = todayKey();
   loadGoals();
+  renderCloudSync();
 
   bindEvents();
   loadCurrentReview();
@@ -388,6 +405,13 @@ function bindEvents() {
     event.preventDefault();
     saveGoals();
   });
+
+  els.cloudConfigForm.addEventListener("submit", saveCloudConfig);
+  els.cloudAuthForm.addEventListener("submit", signInCloud);
+  els.cloudSignUp.addEventListener("click", signUpCloud);
+  els.cloudUpload.addEventListener("click", () => syncCloudNow());
+  els.cloudDownload.addEventListener("click", restoreCloudData);
+  els.cloudSignOut.addEventListener("click", signOutCloud);
 
   els.exportData.addEventListener("click", exportData);
   els.importData.addEventListener("change", importData);
@@ -1130,6 +1154,214 @@ function deleteLog(id) {
   showToast("学习记录已删除");
 }
 
+function renderCloudSync() {
+  els.cloudUrl.value = cloud.url || "";
+  els.cloudAnonKey.value = cloud.anonKey || "";
+  const hasConfig = Boolean(cloud.url && cloud.anonKey);
+  const loggedIn = Boolean(cloud.session?.accessToken && cloud.session?.userId);
+  els.cloudStatus.textContent = loggedIn
+    ? `已登录：${cloud.session.email || "当前账号"}`
+    : hasConfig
+      ? "已配置，未登录"
+      : "未连接";
+  els.cloudUpload.disabled = !loggedIn;
+  els.cloudDownload.disabled = !loggedIn;
+  els.cloudSignOut.disabled = !loggedIn;
+}
+
+function saveCloudConfig(event) {
+  event.preventDefault();
+  const url = normalizeCloudUrl(els.cloudUrl.value);
+  const anonKey = els.cloudAnonKey.value.trim();
+  if (!url || !anonKey) {
+    showToast("请填写项目 URL 和匿名密钥");
+    return;
+  }
+  cloud = { ...cloud, url, anonKey };
+  saveCloudConfigState();
+  renderCloudSync();
+  showToast("云端连接已保存");
+}
+
+async function signUpCloud() {
+  if (!ensureCloudConfig()) return;
+  const email = els.cloudEmail.value.trim();
+  const password = els.cloudPassword.value;
+  if (!email || password.length < 6) {
+    showToast("请输入邮箱和至少 6 位密码");
+    return;
+  }
+  try {
+    const result = await cloudRequest("/auth/v1/signup", {
+      method: "POST",
+      body: { email, password }
+    });
+    if (result.session) {
+      setCloudSession(result.session, result.user);
+      showToast("注册并登录成功");
+    } else {
+      showToast("注册成功，请在邮箱中确认后再登录");
+    }
+  } catch (error) {
+    showToast(error.message || "注册失败");
+  }
+}
+
+async function signInCloud(event) {
+  event.preventDefault();
+  if (!ensureCloudConfig()) return;
+  const email = els.cloudEmail.value.trim();
+  const password = els.cloudPassword.value;
+  if (!email || !password) {
+    showToast("请输入邮箱和密码");
+    return;
+  }
+  try {
+    const result = await cloudRequest("/auth/v1/token?grant_type=password", {
+      method: "POST",
+      body: { email, password }
+    });
+    setCloudSession(result, result.user);
+    els.cloudPassword.value = "";
+    showToast("云端登录成功");
+  } catch (error) {
+    showToast(error.message || "登录失败");
+  }
+}
+
+function setCloudSession(session, user) {
+  cloud.session = {
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token || "",
+    userId: user?.id || session.user?.id,
+    email: user?.email || session.user?.email || els.cloudEmail.value.trim(),
+    expiresAt: Number(session.expires_at || 0) * 1000
+  };
+  saveCloudConfigState();
+  renderCloudSync();
+}
+
+async function syncCloudNow({ silent = false } = {}) {
+  if (!isCloudLoggedIn()) {
+    if (!silent) showToast("请先完成云端登录");
+    return;
+  }
+  try {
+    await cloudRequest(`/rest/v1/kaoyan_profiles?on_conflict=user_id`, {
+      method: "POST",
+      authenticated: true,
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: {
+        user_id: cloud.session.userId,
+        payload: state,
+        updated_at: new Date().toISOString()
+      }
+    });
+    cloud.lastSyncedAt = new Date().toISOString();
+    saveCloudConfigState();
+    renderCloudSync();
+    if (!silent) showToast("已同步到云端");
+  } catch (error) {
+    if (silent) throw error;
+    showToast(error.message || "云端同步失败");
+  }
+}
+
+async function restoreCloudData() {
+  if (!isCloudLoggedIn()) {
+    showToast("请先完成云端登录");
+    return;
+  }
+  if (!window.confirm("从云端恢复会覆盖当前浏览器中的备考数据，是否继续？")) return;
+  try {
+    const records = await cloudRequest(
+      `/rest/v1/kaoyan_profiles?user_id=eq.${encodeURIComponent(cloud.session.userId)}&select=payload`,
+      { authenticated: true }
+    );
+    if (!records.length) {
+      showToast("云端还没有备考数据，请先在已有设备上传一次");
+      return;
+    }
+    state = mergeState(structuredClone(defaultData), records[0].payload);
+    persistLocal();
+    els.examDate.value = state.examDate;
+    els.weeklyTargetHours.value = state.weeklyTargetHours;
+    populateSubjectOptions();
+    loadGoals();
+    loadCurrentReview();
+    render();
+    showToast("已从云端恢复数据");
+  } catch (error) {
+    showToast(error.message || "云端恢复失败");
+  }
+}
+
+function signOutCloud() {
+  cloud.session = null;
+  cloud.lastSyncedAt = "";
+  saveCloudConfigState();
+  renderCloudSync();
+  showToast("已退出云端账号");
+}
+
+function ensureCloudConfig() {
+  const url = normalizeCloudUrl(els.cloudUrl.value || cloud.url);
+  const anonKey = (els.cloudAnonKey.value || cloud.anonKey || "").trim();
+  if (!url || !anonKey) {
+    showToast("请先保存 Supabase 连接信息");
+    return false;
+  }
+  cloud = { ...cloud, url, anonKey };
+  saveCloudConfigState();
+  return true;
+}
+
+function normalizeCloudUrl(value) {
+  const url = value.trim().replace(/\/+$/, "");
+  return /^https:\/\/[\w-]+\.supabase\.co$/i.test(url) ? url : "";
+}
+
+function isCloudLoggedIn() {
+  return Boolean(cloud.url && cloud.anonKey && cloud.session?.accessToken && cloud.session?.userId);
+}
+
+async function cloudRequest(path, options = {}) {
+  if (options.authenticated) await refreshCloudSessionIfNeeded();
+  const headers = {
+    apikey: cloud.anonKey,
+    ...(options.authenticated ? { Authorization: `Bearer ${cloud.session.accessToken}` } : {}),
+    ...(options.headers || {})
+  };
+  if (options.body) headers["Content-Type"] = "application/json";
+  const response = await fetch(`${cloud.url}${path}`, {
+    method: options.method || "GET",
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  if (response.status === 204) return null;
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || payload.error_description || "云端请求失败");
+  return payload;
+}
+
+async function refreshCloudSessionIfNeeded() {
+  const expiresAt = Number(cloud.session?.expiresAt || 0);
+  if (!expiresAt || Date.now() < expiresAt - 30000 || !cloud.session?.refreshToken) return;
+  const result = await cloudRequest("/auth/v1/token?grant_type=refresh_token", {
+    method: "POST",
+    body: { refresh_token: cloud.session.refreshToken }
+  });
+  setCloudSession(result, result.user);
+}
+
+function scheduleCloudSync() {
+  if (!isCloudLoggedIn()) return;
+  window.clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = window.setTimeout(() => {
+    syncCloudNow({ silent: true }).catch(() => {});
+  }, 1200);
+}
+
 function exportData() {
   const backup = {
     version: 2,
@@ -1225,6 +1457,22 @@ function loadState() {
   }
 }
 
+function loadCloudConfig() {
+  const raw = localStorage.getItem(CLOUD_CONFIG_KEY);
+  if (!raw) return { url: "", anonKey: "", session: null, lastSyncedAt: "" };
+  try {
+    const saved = JSON.parse(raw);
+    return {
+      url: normalizeCloudUrl(saved.url || ""),
+      anonKey: saved.anonKey || "",
+      session: saved.session || null,
+      lastSyncedAt: saved.lastSyncedAt || ""
+    };
+  } catch {
+    return { url: "", anonKey: "", session: null, lastSyncedAt: "" };
+  }
+}
+
 function mergeState(base, saved) {
   return {
     ...base,
@@ -1244,8 +1492,17 @@ function mergeState(base, saved) {
   };
 }
 
-function persist() {
+function persistLocal() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function persist() {
+  persistLocal();
+  scheduleCloudSync();
+}
+
+function saveCloudConfigState() {
+  localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cloud));
 }
 
 function todayKey() {
