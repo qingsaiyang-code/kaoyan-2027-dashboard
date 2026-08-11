@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2027 考研备考驾驶舱</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <span class="brand-mark">研</span>
+          <div>
+            <strong>备考驾驶舱</strong>
+            <small>408 / 数一 / 英一 / 政治</small>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <a href="#dashboard" class="nav-item active" data-view="dashboard">仪表盘</a>
+          <a href="#goals" class="nav-item" data-view="goals">目标管理</a>
+          <a href="#roadmap" class="nav-item" data-view="roadmap">复习路线</a>
+          <a href="#tasks" class="nav-item" data-view="tasks">今日计划</a>
+          <a href="#logs" class="nav-item" data-view="logs">学习记录</a>
+          <a href="#subjects" class="nav-item" data-view="subjects">科目进度</a>
+          <a href="#mistakes" class="nav-item" data-view="mistakes">错题本</a>
+          <a href="#exams" class="nav-item" data-view="exams">套卷记录</a>
+          <a href="#review" class="nav-item" data-view="review">周复盘</a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <label for="examDate">考试日期</label>
+          <input id="examDate" type="date" />
+          <div class="data-actions" aria-label="数据管理">
+            <button id="exportData" class="secondary-button" type="button">导出数据</button>
+            <label class="import-button" for="importData">导入数据</label>
+            <input id="importData" type="file" accept="application/json" hidden />
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="stageLabel">基础期</p>
+            <h1>2027 考研复习规划</h1>
+          </div>
+          <div class="countdown">
+            <span id="daysLeft">--</span>
+            <small>天后考试</small>
+          </div>
+        </header>
+
+        <section id="dashboard" class="view active" aria-labelledby="dashboard-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="dashboard-title">今日总览</h2>
+              <p>先把每天该做的事情收束清楚，再看进度和风险。</p>
+            </div>
+            <button class="primary-button" id="quickAddDashboard" type="button">新增任务</button>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="panel today-panel">
+              <div class="panel-header">
+                <h3>今日任务</h3>
+                <span id="todayCompletion">0/0</span>
+              </div>
+              <div id="todayTasks" class="task-list compact"></div>
+            </section>
+
+            <section class="panel progress-panel">
+              <div class="panel-header">
+                <h3>四科进度</h3>
+                <span id="overallProgress">0%</span>
+              </div>
+              <div id="subjectProgress" class="subject-progress"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h3>本周投入</h3>
+                <span id="weekHours">0h</span>
+              </div>
+              <div class="hours-chart" id="hoursChart"></div>
+              <div class="week-target">
+                <label for="weeklyTargetHours">每周目标
+                  <input id="weeklyTargetHours" type="number" min="1" max="100" step="1" />
+                  <span>小时</span>
+                </label>
+                <strong id="weekTargetStatus">--</strong>
+              </div>
+            </section>
+
+            <section class="panel risk-panel">
+              <div class="panel-header">
+                <h3>风险提醒</h3>
+                <span id="riskCount">0 条</span>
+              </div>
+              <div id="riskList" class="risk-list"></div>
+            </section>
+
+            <section class="panel metric-panel">
+              <div class="panel-header">
+                <h3>本周完成率</h3>
+                <span id="weekTaskCount">0/0</span>
+              </div>
+              <div id="weekCompletionMetric" class="metric-value">--</div>
+              <p class="metric-note">按本周安排的任务计算</p>
+            </section>
+
+            <section class="panel metric-panel latest-exam-panel">
+              <div class="panel-header">
+                <h3>最近模考</h3>
+                <span id="latestExamSubject">--</span>
+              </div>
+              <div id="latestExamMetric" class="metric-value">--</div>
+              <p id="latestExamNote" class="metric-note">完成套卷后会显示在这里</p>
+            </section>
+          </div>
+
+          <section class="panel study-calendar-panel">
+            <div class="panel-header">
+              <h3>近 28 天学习连续性</h3>
+              <span id="calendarSummary">0h 专注</span>
+            </div>
+          <div id="studyCalendar" class="study-calendar"></div>
+          </section>
+        </section>
+
+        <section id="goals" class="view" aria-labelledby="goals-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="goals-title">目标管理</h2>
+              <p>先确定终点和每科权重，再让每周计划有明确的取舍依据。</p>
+            </div>
+            <button id="saveGoals" class="primary-button" type="button">保存目标</button>
+          </div>
+
+          <form id="goalForm" class="goal-form">
+            <section class="panel">
+              <div class="panel-header"><h3>报考目标</h3></div>
+              <div class="goal-fields">
+                <label>目标院校<input id="goalSchool" type="text" placeholder="例如：北京邮电大学" /></label>
+                <label>专业方向<input id="goalMajor" type="text" placeholder="例如：计算机科学与技术" /></label>
+                <label>目标总分<input id="goalScore" type="number" min="0" max="500" placeholder="例如：350" /></label>
+                <label>近年复试线<input id="goalCutoff" type="number" min="0" max="500" placeholder="例如：330" /></label>
+                <label class="goal-wide">参考书 / 课程<textarea id="goalMaterials" rows="4" placeholder="记录教材、课程、真题资料和使用顺序"></textarea></label>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h3>各科目标与权重</h3></div>
+              <div class="goal-score-grid">
+                <label>408 目标分<input id="goal408Score" type="number" min="0" max="150" placeholder="150" /></label>
+                <label>数学一目标分<input id="goalMathScore" type="number" min="0" max="150" placeholder="150" /></label>
+                <label>英语一目标分<input id="goalEnglishScore" type="number" min="0" max="100" placeholder="100" /></label>
+                <label>政治目标分<input id="goalPoliticsScore" type="number" min="0" max="100" placeholder="100" /></label>
+                <label>408 权重<input id="goal408Weight" type="number" min="1" max="10" value="4" /></label>
+                <label>数学一权重<input id="goalMathWeight" type="number" min="1" max="10" value="4" /></label>
+                <label>英语一权重<input id="goalEnglishWeight" type="number" min="1" max="10" value="3" /></label>
+                <label>政治权重<input id="goalPoliticsWeight" type="number" min="1" max="10" value="2" /></label>
+              </div>
+            </section>
+          </form>
+        </section>
+
+        <section id="roadmap" class="view" aria-labelledby="roadmap-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="roadmap-title">复习路线</h2>
+              <p>按距离初试的时间推进，路线负责定方向，任务负责落到今天。</p>
+            </div>
+          </div>
+
+          <section class="panel roadmap-current">
+            <div>
+              <p class="eyebrow" id="roadmapCurrentLabel">当前阶段</p>
+              <h3 id="roadmapCurrentTitle">--</h3>
+              <p id="roadmapCurrentDescription"></p>
+            </div>
+            <div class="roadmap-focus" id="roadmapFocus"></div>
+          </section>
+          <div id="roadmapTimeline" class="roadmap-timeline"></div>
+        </section>
+
+        <section id="logs" class="view" aria-labelledby="logs-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="logs-title">学习记录</h2>
+              <p>记录真实专注时间，复盘时才能判断节奏是否可持续。</p>
+            </div>
+          </div>
+
+          <form id="logForm" class="log-form panel">
+            <label>
+              科目
+              <select id="logSubject"></select>
+            </label>
+            <label>
+              学习内容
+              <input id="logTitle" type="text" placeholder="例如：408 栈和队列例题复盘" required />
+            </label>
+            <label>
+              日期
+              <input id="logDate" type="date" required />
+            </label>
+            <label>
+              专注时长（分钟）
+              <input id="logMinutes" type="number" min="5" step="5" value="60" required />
+            </label>
+            <button class="primary-button" type="submit">保存记录</button>
+          </form>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h3>专注明细</h3>
+              <div class="segmented">
+                <button type="button" class="active" data-log-filter="week">本周</button>
+                <button type="button" data-log-filter="all">全部</button>
+              </div>
+            </div>
+            <div id="logList" class="log-list"></div>
+          </section>
+        </section>
+
+        <section id="tasks" class="view" aria-labelledby="tasks-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="tasks-title">今日计划</h2>
+              <p>任务越具体，执行时越省脑力。</p>
+            </div>
+          </div>
+
+          <form id="taskForm" class="task-form panel">
+            <label>
+              科目
+              <select id="taskSubject"></select>
+            </label>
+            <label>
+              任务内容
+              <input id="taskTitle" type="text" placeholder="例如：高数极限习题 30 题" required />
+            </label>
+            <label>
+              日期
+              <input id="taskDate" type="date" required />
+            </label>
+            <label>
+              预计用时
+              <input id="taskMinutes" type="number" min="10" step="5" value="60" />
+            </label>
+            <label>
+              优先级
+              <select id="taskPriority">
+                <option value="high">高</option>
+                <option value="medium" selected>中</option>
+                <option value="low">低</option>
+              </select>
+            </label>
+            <label>
+              难度
+              <select id="taskDifficulty">
+                <option value="easy">简单</option>
+                <option value="medium" selected>适中</option>
+                <option value="hard">困难</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">添加</button>
+          </form>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h3>任务清单</h3>
+              <div class="segmented">
+                <button type="button" class="active" data-filter="today">今天</button>
+                <button type="button" data-filter="week">本周</button>
+                <button type="button" data-filter="overdue">逾期</button>
+                <button type="button" data-filter="all">全部</button>
+              </div>
+            </div>
+            <div id="taskList" class="task-list"></div>
+          </div>
+        </section>
+
+        <section id="subjects" class="view" aria-labelledby="subjects-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="subjects-title">科目进度</h2>
+              <p>按章节推进，别让某一块长期沉在水下。</p>
+            </div>
+          </div>
+          <div id="subjectCards" class="subject-grid"></div>
+        </section>
+
+        <section id="mistakes" class="view" aria-labelledby="mistakes-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="mistakes-title">错题本</h2>
+              <p>留下可复盘的错误，比记住“我做错过”更有用。</p>
+            </div>
+          </div>
+
+          <form id="mistakeForm" class="mistake-form panel">
+            <label>
+              科目
+              <select id="mistakeSubject"></select>
+            </label>
+            <label>
+              题目来源
+              <input id="mistakeSource" type="text" placeholder="例如：2018 408 真题" />
+            </label>
+            <label>
+              知识点
+              <input id="mistakeTopic" type="text" placeholder="例如：二叉树遍历" required />
+            </label>
+            <label>
+              错误类型
+              <select id="mistakeType">
+                <option>概念不清</option>
+                <option>方法不熟</option>
+                <option>计算失误</option>
+                <option>审题遗漏</option>
+                <option>时间分配</option>
+              </select>
+            </label>
+            <label>
+              优先级
+              <select id="mistakePriority">
+                <option value="high">高</option>
+                <option value="medium" selected>中</option>
+                <option value="low">低</option>
+              </select>
+            </label>
+            <label class="wide-field">
+              复盘与下次处理方式
+              <input id="mistakeNote" type="text" placeholder="例如：整理判断条件，三天后重做同类题" />
+            </label>
+            <button class="primary-button" type="submit">记录错题</button>
+          </form>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h3>待回看</h3>
+              <div class="segmented">
+                <button type="button" class="active" data-mistake-filter="open">待解决</button>
+                <button type="button" data-mistake-filter="all">全部</button>
+                <button type="button" data-mistake-filter="resolved">已解决</button>
+              </div>
+            </div>
+            <div id="mistakeList" class="mistake-list"></div>
+          </section>
+          <section class="panel weakness-panel">
+            <div class="panel-header"><h3>薄弱点排行</h3><span>按未解决错题数</span></div>
+            <div id="weaknessRanking" class="weakness-ranking"></div>
+          </section>
+        </section>
+
+        <section id="exams" class="view" aria-labelledby="exams-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="exams-title">套卷记录</h2>
+              <p>用分数趋势校准节奏，也把每次考试后的判断留下来。</p>
+            </div>
+          </div>
+
+          <form id="examForm" class="exam-form panel">
+            <label>
+              科目
+              <select id="examSubject"></select>
+            </label>
+            <label>
+              试卷名称
+              <input id="examTitle" type="text" placeholder="例如：2018 数学一真题" required />
+            </label>
+            <label>
+              日期
+              <input id="examDateRecord" type="date" required />
+            </label>
+            <label>
+              得分
+              <input id="examScore" type="number" min="0" step="0.5" required />
+            </label>
+            <label>
+              满分
+              <input id="examTotal" type="number" min="1" step="0.5" value="150" required />
+            </label>
+            <label>
+              用时（分钟）
+              <input id="examMinutes" type="number" min="1" step="5" value="180" required />
+            </label>
+            <label>
+              总题数
+              <input id="examQuestionCount" type="number" min="0" step="1" value="0" />
+            </label>
+            <label>
+              错题数
+              <input id="examWrongCount" type="number" min="0" step="1" value="0" />
+            </label>
+            <label>
+              主观评价
+              <select id="examAssessment">
+                <option value="good">状态良好</option>
+                <option value="normal" selected>一般</option>
+                <option value="poor">需要调整</option>
+              </select>
+            </label>
+            <label class="exam-note">
+              考后结论
+              <input id="examNote" type="text" placeholder="例如：选择题失分集中在概率，下一周补题" />
+            </label>
+            <button class="primary-button" type="submit">保存记录</button>
+          </form>
+
+          <div class="exam-summary" id="examSummary"></div>
+          <div class="exam-analysis-grid">
+            <section class="panel">
+              <div class="panel-header"><h3>成绩变化</h3><span>按录入时间</span></div>
+              <div id="examTrendChart" class="exam-trend-chart"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h3>投入与表现</h3><span>近 28 天</span></div>
+              <div id="examInsights" class="exam-insights"></div>
+            </section>
+          </div>
+          <section class="panel">
+            <div class="panel-header">
+              <h3>历史记录</h3>
+              <span id="examCount">0 次</span>
+            </div>
+            <div id="examList" class="exam-list"></div>
+          </section>
+        </section>
+
+        <section id="review" class="view" aria-labelledby="review-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="review-title">周复盘</h2>
+              <p>复盘不是自责，是给下一周重新配速。</p>
+            </div>
+            <button id="saveReview" class="primary-button" type="button">保存复盘</button>
+          </div>
+
+          <div class="review-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <h3>本周概况</h3>
+                <span id="reviewSummary">--</span>
+              </div>
+              <div id="reviewStats" class="review-stats"></div>
+            </section>
+
+            <section class="panel review-editor">
+              <label>
+                本周完成得好的地方
+                <textarea id="reviewGood" rows="4"></textarea>
+              </label>
+              <label>
+                最大卡点
+                <textarea id="reviewProblem" rows="4"></textarea>
+              </label>
+              <label>
+                下周调整
+                <textarea id="reviewNext" rows="4"></textarea>
+              </label>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
