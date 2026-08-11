@@ -1096,6 +1096,85 @@ button {
   gap: 20px;
 }
 
+.sync-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+  gap: 20px;
+}
+
+.sync-form {
+  display: grid;
+  gap: 14px;
+}
+
+.sync-form label {
+  display: grid;
+  gap: 7px;
+  color: #53645d;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sync-form input,
+.sync-form textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid #cfd8cf;
+  border-radius: 6px;
+  background: #fffefa;
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+}
+
+.sync-form textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.sync-form input:focus,
+.sync-form textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(33, 106, 90, 0.13);
+}
+
+.light-button {
+  min-height: 42px;
+  border-color: #c8d4c9;
+  background: #fffefa;
+  color: var(--primary-dark);
+  font-size: 14px;
+}
+
+.light-button:hover {
+  border-color: var(--primary);
+  background: #edf4ed;
+}
+
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sync-actions .secondary-button,
+.sync-actions .primary-button {
+  flex: 1;
+  min-width: 100px;
+}
+
+.cloud-actions {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e3e8e1;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .goal-fields,
 .goal-score-grid {
   display: grid;
@@ -1603,7 +1682,8 @@ button {
   .subject-grid,
   .review-layout,
   .goal-form,
-  .exam-analysis-grid {
+  .exam-analysis-grid,
+  .sync-layout {
     grid-template-columns: 1fr;
   }
 
