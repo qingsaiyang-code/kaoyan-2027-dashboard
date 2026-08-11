@@ -27,6 +27,7 @@
           <a href="#mistakes" class="nav-item" data-view="mistakes">错题本</a>
           <a href="#exams" class="nav-item" data-view="exams">套卷记录</a>
           <a href="#review" class="nav-item" data-view="review">周复盘</a>
+          <a href="#sync" class="nav-item" data-view="sync">云端同步</a>
         </nav>
 
         <div class="sidebar-footer">
@@ -462,6 +463,43 @@
                 下周调整
                 <textarea id="reviewNext" rows="4"></textarea>
               </label>
+            </section>
+          </div>
+        </section>
+
+        <section id="sync" class="view" aria-labelledby="sync-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="sync-title">云端同步</h2>
+              <p>使用同一账号登录电脑和手机，即可共享一份备考数据。</p>
+            </div>
+          </div>
+
+          <div class="sync-layout">
+            <section class="panel">
+              <div class="panel-header"><h3>Supabase 连接</h3></div>
+              <form id="cloudConfigForm" class="sync-form">
+                <label>项目 URL<input id="cloudUrl" type="url" placeholder="https://xxxx.supabase.co" required /></label>
+                <label>匿名密钥<textarea id="cloudAnonKey" rows="4" placeholder="sb_publishable_... 或 eyJ..." required></textarea></label>
+                <button id="saveCloudConfig" class="secondary-button light-button" type="submit">保存连接</button>
+              </form>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header"><h3>账号与数据</h3><span id="cloudStatus">未连接</span></div>
+              <form id="cloudAuthForm" class="sync-form">
+                <label>邮箱<input id="cloudEmail" type="email" autocomplete="email" required /></label>
+                <label>密码<input id="cloudPassword" type="password" autocomplete="current-password" minlength="6" required /></label>
+                <div class="sync-actions">
+                  <button id="cloudSignUp" class="secondary-button light-button" type="button">注册</button>
+                  <button id="cloudSignIn" class="primary-button" type="submit">登录</button>
+                </div>
+              </form>
+              <div class="sync-actions cloud-actions">
+                <button id="cloudUpload" class="primary-button" type="button">同步到云端</button>
+                <button id="cloudDownload" class="secondary-button light-button" type="button">从云端恢复</button>
+                <button id="cloudSignOut" class="compact-button danger" type="button">退出登录</button>
+              </div>
             </section>
           </div>
         </section>
